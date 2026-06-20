@@ -10,6 +10,11 @@ class MediationAnalyzer:
         self.results = {}
 
     def ols(self, y, x_cols):
+        # 验证列名
+        missing = [c for c in [y] + list(x_cols) if c not in self.data.columns]
+        if missing:
+            return None
+
         Y = self.data[y].values
         X = self.data[x_cols].values
         n = len(Y)
@@ -43,6 +48,8 @@ class MediationAnalyzer:
         except np.linalg.LinAlgError:
             se = np.zeros(len(beta))
 
+        # 防止除零
+        se = np.where(se < 1e-15, 1e-15, se)
         t_vals = beta / se
         p_vals = 2 * (1 - stats.t.cdf(np.abs(t_vals), df_res))
 
@@ -181,11 +188,58 @@ class MediationAnalyzer:
         return {'ind1': ci(e1), 'ind2': ci(e2), 'ind3': ci(e3), 'n': self.bootstrap_n}
 
     def _ols_on(self, data, y, x_cols):
-        old = self.data
-        self.data = data
-        res = self.ols(y, x_cols)
-        self.data = old
-        return res
+        # 直接在指定数据上计算，不修改self.data
+        Y = data[y].values
+        X = data[x_cols].values
+        n = len(Y)
+        X = np.column_stack([np.ones(n), X])
+        k = X.shape[1] - 1
+
+        try:
+            beta = np.linalg.lstsq(X, Y, rcond=None)[0]
+        except np.linalg.LinAlgError:
+            return None
+
+        Y_hat = X @ beta
+        resid = Y - Y_hat
+        df_res = n - k - 1
+        if df_res <= 0:
+            return None
+
+        ss_res = resid @ resid
+        ss_tot = ((Y - Y.mean()) ** 2).sum()
+        r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0
+        r2_adj = 1 - (1 - r2) * (n - 1) / df_res
+
+        ms_reg = (ss_tot - ss_res) / k if k > 0 else 0
+        ms_res = ss_res / df_res
+        f_stat = ms_reg / ms_res if ms_res > 0 else 0
+        f_p = 1 - stats.f.cdf(f_stat, k, df_res)
+
+        try:
+            cov = ms_res * np.linalg.inv(X.T @ X)
+            se = np.sqrt(np.abs(np.diag(cov)))
+        except np.linalg.LinAlgError:
+            se = np.zeros(len(beta))
+
+        se = np.where(se < 1e-15, 1e-15, se)
+        t_vals = beta / se
+        p_vals = 2 * (1 - stats.t.cdf(np.abs(t_vals), df_res))
+
+        names = ['截距'] + list(x_cols)
+        coef = []
+        for i, name in enumerate(names):
+            coef.append({
+                'var': name, 'beta': beta[i], 'se': se[i],
+                't': t_vals[i], 'p': p_vals[i],
+                'sig': self._sig(p_vals[i])
+            })
+
+        return {
+            'y': y, 'x': list(x_cols), 'coef': coef,
+            'r2': r2, 'r2_adj': r2_adj,
+            'f': f_stat, 'f_p': f_p, 'n': n, 'df': df_res
+        }
 
     def _sobel(self, a_res, b_res):
         if not a_res or not b_res:
@@ -288,6 +342,9 @@ parameterEstimates(fit, standardized = TRUE)
 
 
 def load_data(path):
+    import os
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"文件不存在: {path}")
     if path.endswith('.csv'):
         return pd.read_csv(path)
     if path.endswith(('.xlsx', '.xls')):

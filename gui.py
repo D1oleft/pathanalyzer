@@ -10,6 +10,7 @@ from analyzer import MediationAnalyzer, load_data
 
 class App:
     def __init__(self, root):
+        self.root = root
         root.title("PathAnalyzer")
         root.geometry("1100x700")
 
@@ -104,12 +105,12 @@ class App:
             messagebox.showerror("错误", str(e))
 
     def load_example(self):
-        np.random.seed(42)
+        rng = np.random.default_rng(42)
         n = 200
-        X = np.random.randn(n)
-        M1 = 0.5 * X + np.random.randn(n) * 0.5
-        M2 = 0.3 * X + 0.4 * M1 + np.random.randn(n) * 0.5
-        Y = 0.2 * X + 0.3 * M1 + 0.4 * M2 + np.random.randn(n) * 0.5
+        X = rng.standard_normal(n)
+        M1 = 0.5 * X + rng.standard_normal(n) * 0.5
+        M2 = 0.3 * X + 0.4 * M1 + rng.standard_normal(n) * 0.5
+        Y = 0.2 * X + 0.3 * M1 + 0.4 * M2 + rng.standard_normal(n) * 0.5
         self.data = pd.DataFrame({'X': X, 'M1': M1, 'M2': M2, 'Y': Y})
         self._update_combos()
         self.x_var.set('X')
@@ -134,7 +135,10 @@ class App:
             messagebox.showwarning("提示", "请选择 X, Y, M1")
             return
 
-        boot_n = int(self.boot_var.get())
+        try:
+            boot_n = int(self.boot_var.get())
+        except ValueError:
+            boot_n = 5000
         self.analyzer = MediationAnalyzer(self.data, boot_n)
 
         try:
