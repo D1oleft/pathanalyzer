@@ -1,64 +1,68 @@
 # PathAnalyzer
 
-中介效应分析工具，支持单中介和串行中介模型。
+中介效应分析工具，支持简单中介、并行中介、串联中介和全链路扫描。
 
-## 安装
+## 下载
 
-```bash
-git clone https://github.com/D1oleft/pathanalyzer.git
-cd pathanalyzer
-pip install -r requirements.txt
-```
-
-## 使用
-
-GUI界面：
-```bash
-python main.py
-```
-
-代码调用：
-```python
-from analyzer import MediationAnalyzer, load_data
-
-data = load_data("data.csv")
-a = MediationAnalyzer(data, bootstrap_n=5000)
-a.simple_mediation('X', 'M', 'Y')
-print(a.summary())
-```
+直接下载 [PathAnalyzer.exe](PathAnalyzer.exe)，双击运行，不需要安装。
 
 ## 功能
 
-- 单中介分析 (X→M→Y)
-- 串行中介分析 (X→M1→M2→Y)
+- 简单中介分析 (X→M→Y)
+- 并行中介分析 (X→M1/M2→Y)
+- 串联中介分析 (X→M1→M2→Y)
+- 全链路扫描（自动遍历所有X×M×Y组合）
 - Bootstrap置信区间
 - Sobel检验
 - R代码生成 (lavaan)
-- Excel导出
+- 智能解读
+- Excel/Word导出
 
-## 模型
+## 快速开始
 
-单中介：
+1. 双击 PathAnalyzer.exe 启动软件
+2. 点击「加载数据」选择Excel文件
+3. 拖放变量到X、Y、M框
+4. 选择模型类型（并行/串联）
+5. 点击「运行分析」
+
+详细步骤见 [快速开始指南](docs/快速开始指南.md) 或 [使用说明书](docs/PathAnalyzer_使用说明书.md)。
+
+## 测试数据
+
+tests/ 目录下有5个测试文件：
+
+| 文件 | 模型 | 说明 |
+|------|------|------|
+| 测试1_简单中介.xlsx | 施氮量→硝态氮→产量 | 单中介 |
+| 测试2_并行中介.xlsx | 施氮量→BG/NO3→产量 | 双中介并行 |
+| 测试3_串联中介.xlsx | 施氮量→酶活性→硝态氮→产量 | 三链串联 |
+| 测试4_二链全扫描.xlsx | 3X×3M×2Y=18条路径 | 全扫描 |
+| 测试5_三链全扫描.xlsx | 2X×4M×2Y=16条路径 | 全扫描 |
+
+## 文档
+
+- [5个测试操作步骤](docs/5个测试操作步骤（老师先看这个）.docx)
+- [使用说明书](docs/PathAnalyzer_使用说明书.docx)
+- [快速开始指南](docs/快速开始指南.docx)
+
+## 开发
+
+Python源码版：
+
+```bash
+pip install -r requirements.txt
+python main.py
 ```
-X --a--> M --b--> Y
-```
-间接效应 = a × b
 
-串行中介：
-```
-X --a1--> M1 --b1--> Y
- \         ↘d21    ↗b2
-  \         M2---→/
-   --a2-->--/
-```
-- ind1 = a1 × b1
-- ind2 = a2 × b2
-- ind3 = a1 × d21 × b2
+## 技术栈
 
-## 参考
-
-- Hayes (2013). Introduction to mediation, moderation, and conditional process analysis.
-- Rosseel (2012). lavaan: An R Package for Structural Equation Modeling.
+- Python 3.14
+- tkinter (GUI)
+- scipy (统计)
+- pandas (数据处理)
+- openpyxl (Excel)
+- python-docx (Word)
 
 ## License
 
